@@ -3,7 +3,7 @@ function kpar_sol=solvek(M,ni,ne,B0,f,Te,Ti,Tperp_e,Tpara_e,Tperp_i,Tpara_i,V_e,
     % 基本常数
     e = 1.602e-19;           % 元电荷 (C)
     me = 9.11e-31;           % 电子质量 (kg)
-    mi = 40*1.67e-27;           % 质子质量 (kg)
+    mi = M*1.67e-27;         % 离子质量 (kg)，使用参数M
     eps0 = 8.854e-12;        % 真空介电常数 (F/m)
     c = 3e8;                 % 光速 (m/s)
     kB = 1.38e-23;           % 玻尔兹曼常数 (J/K)
@@ -24,11 +24,10 @@ function kpar_sol=solvek(M,ni,ne,B0,f,Te,Ti,Tperp_e,Tpara_e,Tperp_i,Tpara_i,V_e,
 
     % 频率
     omega = 2*pi*f;
-    %omega_pe = sqrt(ne*e^2/(eps0*me));    % 电子等离子体频率
-    %omega_pi = sqrt(ni*e^2/(eps0*mi));    % 离子等离子体频率
-    %omega_ce = e*B0/me;                   % 电子回旋频率
-    %omega_ci = e*B0/mi;                   % 离子回旋频率
-    %omega = 0.999*omega_ci;
+    omega_pe = sqrt(ne*e^2/(eps0*me));    % 电子等离子体频率
+    omega_pi = sqrt(ni*e^2/(eps0*mi));    % 离子等离子体频率
+    omega_ce = e*B0/me;                   % 电子回旋频率
+    omega_ci = e*B0/mi;                   % 离子回旋频率
 
     % 热速 (K -> m/s)
     w_para_e = sqrt(2*kB*Te/me);          % 电子平行热速
@@ -61,7 +60,7 @@ function kpar_sol=solvek(M,ni,ne,B0,f,Te,Ti,Tperp_e,Tpara_e,Tperp_i,Tpara_i,V_e,
     k0 = 1 * omega / c;
 
     % 求解
-    options = optimset('Display','iter','TolFun',1e-10,'TolX',1e-10);
+    options = optimset('Display','off','TolFun',1e-10,'TolX',1e-10);
     kpar_sol = fsolve(@(kpar) my_disp_eq(kpar, omega, omega_pe, omega_pi, c, A1e, A1i, xi_n_e, xi_n_i, Z0), k0, options);
 
 end
