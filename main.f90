@@ -5,4 +5,6 @@ program main
 
     print *, "Hello, World!"
 
-end program main
+    print *, "Mac revised the code"
+
+end program mains
