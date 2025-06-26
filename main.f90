@@ -7,4 +7,4 @@ program main
 
     print *, "Mac revised the code"
 
-end program mains
+end program main
