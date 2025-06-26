@@ -1,0 +1,47 @@
+# MATLAB 文件
+*.asv
+*.mat
+*.fig
+*.mex*
+*.p
+*.prj
+slprj/
+codegen/
+*.slxc
+*.autosave
+
+# Fortran 文件
+*.o
+*.mod
+*.exe
+*.out
+*.log
+
+# 编译文件
+*.mexw64
+*.mexw32
+*.mexa64
+*.mexmaci64
+
+# 临时文件
+*~
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志文件
+*.log
+
+# 数据文件（根据需要调整）
+*.dat
+*.csv
+*.txt
+!license.txt
+!README*.txt 
