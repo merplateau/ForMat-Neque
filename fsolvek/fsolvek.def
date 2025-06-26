@@ -1,0 +1,9 @@
+LIBRARY fsolvek
+EXPORTS
+fsolvekInitialize
+fsolvekInitializeWithHandlers
+fsolvekTerminate
+fsolvekPrintStackTrace
+mlxFsolvek
+mlfFsolvek
+

@@ -1,0 +1,15 @@
+{
+  "version": "0.2.1",
+  "tasks": [
+    {
+      "taskLabel": "任务-main_system_call",
+      "appliesTo": "main_system_call.f90",
+      "type": "launch"
+    },
+    {
+      "taskLabel": "任务-main_system_call",
+      "appliesTo": "main_system_call.f90",
+      "type": "launch"
+    }
+  ]
+}
