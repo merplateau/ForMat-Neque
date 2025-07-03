@@ -63,21 +63,25 @@ function F = my_disp_eq(kpar, omega, omega_pe, omega_pi, c, A1e, A1i, xi_n_e, xi
     xi_i = xi_n_i(kpar);
     Z_e = Z0(xi_e, kpar);
     Z_i = Z0(xi_i, kpar);
-    fprintf('当前kpar = %.6e + %.6ei, xi_e = %.6e + %.6ei, xi_i = %.6e + %.6ei, Z_e = %.6e + %.6ei, Z_i = %.6e + %.6ei, Ae = %.6e + %.6ei, Ai = %.6e + %.6ei\n', ...
-        real(kpar), imag(kpar), real(xi_e), imag(xi_e), real(xi_i), imag(xi_i), real(Z_e), imag(Z_e), real(Z_i), imag(Z_i), real(Ae), imag(Ae), real(Ai), imag(Ai));
+    %fprintf('当前kpar = %.6e + %.6ei, xi_e = %.6e + %.6ei, xi_i = %.6e + %.6ei, Z_e = %.6e + %.6ei, Z_i = %.6e + %.6ei, Ae = %.6e + %.6ei, Ai = %.6e + %.6ei\n', ...
+    %    real(kpar), imag(kpar), real(xi_e), imag(xi_e), real(xi_i), imag(xi_i), real(Z_e), imag(Z_e), real(Z_i), imag(Z_i), real(Ae), imag(Ae), real(Ai), imag(Ai));
     F = (kpar.^2 * c^2 - omega^2 - omega_pe^2 * Ae - omega_pi^2 * Ai) / c^2;
 end
 
+for i = 1:10000
 % 初始猜测
 k0 = 0.8 * omega / c;
 
 % 求解
-options = optimset('Display','iter','TolFun',1e-10,'TolX',1e-10);
+options = optimset('Display','off','TolFun',1e-10,'TolX',1e-10);
 kpar_sol = fsolve(@(kpar) my_disp_eq(kpar, omega, omega_pe, omega_pi, c, A1e, A1i, xi_n_e, xi_n_i, Z0), k0, options);
 
 % 输出归一化结果
 result_real = c * real(kpar_sol) / omega_ci;
 result_imag = c * imag(kpar_sol) / omega_ci;
+
+end
+
 fprintf('Re[c*k_parallel/omega_ci] = %.6f\n', result_real);
 fprintf('Im[c*k_parallel/omega_ci] = %.6f\n', result_imag);
 
