@@ -1,42 +1,40 @@
-# Makefile for Fortran + MATLAB Engine
+# Makefile for k_solver Fortran program
 FC = gfortran
-CC = gcc
-
-# MATLAB路径（需要根据你的安装路径调整）
-MATLAB_ROOT = /Applications/MATLAB_R2024b.app
-MATLAB_INC = $(MATLAB_ROOT)/extern/include
-MATLAB_LIB = $(MATLAB_ROOT)/bin/maci64
-
-# 编译选项
-FFLAGS = -O2 -Wall
-CFLAGS = -O2 -Wall
-LDFLAGS = -L$(MATLAB_LIB) -leng -lmx -lm
-
-# 目标文件
-TARGET = main_with_matlab
-SOURCE = main_with_matlab.f90
+FFLAGS = -O2 -Wall -Wextra -std=f2008
+TARGET = k_solver
+SOURCES = k_solver.f90
+OBJECTS = $(SOURCES:.f90=.o)
 
 # 默认目标
 all: $(TARGET)
 
-# 编译规则
-$(TARGET): $(SOURCE)
-	$(FC) $(FFLAGS) -I$(MATLAB_INC) -o $@ $< $(LDFLAGS)
+# 编译主程序
+$(TARGET): $(OBJECTS)
+	$(FC) $(FFLAGS) -o $@ $^
+
+# 编译目标文件
+%.o: %.f90
+	$(FC) $(FFLAGS) -c $< -o $@
 
 # 清理
 clean:
-	rm -f $(TARGET) *.o *.mod
+	rm -f $(OBJECTS) $(TARGET)
 
-# 运行
+# 运行程序
 run: $(TARGET)
 	./$(TARGET)
 
-# 帮助
+# 调试版本
+debug: FFLAGS += -g -fcheck=all
+debug: $(TARGET)
+
+# 显示帮助
 help:
-	@echo "可用的目标："
-	@echo "  all     - 编译程序"
+	@echo "可用的目标:"
+	@echo "  all     - 编译程序 (默认)"
 	@echo "  clean   - 清理编译文件"
 	@echo "  run     - 编译并运行程序"
+	@echo "  debug   - 编译调试版本"
 	@echo "  help    - 显示此帮助信息"
 
-.PHONY: all clean run help 
+.PHONY: all clean run debug help 
