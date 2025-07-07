@@ -13,15 +13,15 @@ kB = 1.38e-23;           % 玻尔兹曼常数 (J/K)
 % VASIMR ICRH 典型参数
 ne = 1e18;               % 电子密度 (m^-3)
 ni = ne;                 % 离子密度 (m^-3)，假设准中性
-B0 = 0.5;                % 磁场 (T)
+B0 = 0.45;                % 磁场 (T)
 f = 190e3;             % 驱动频率 (Hz)
-Te_eV = 0.3;               % 电子温度 (eV)
-Ti_eV = 0.3;             % 离子温度 (eV)
+Te_eV = 0.003;               % 电子温度 (eV)
+Ti_eV = 0.0003;             % 离子温度 (eV)
 Te = Te_eV * e / kB;     % 电子温度 (K)
 Ti = Ti_eV * e / kB;     % 离子温度 (K)
-Tperp_e = 1*Te;         % 电子垂直温度 (K)
+Tperp_e = 10*Te;         % 电子垂直温度 (K)
 Tpara_e = 1*Te;          % 电子平行温度 (K)
-Tperp_i = 1*Ti;         % 离子垂直温度 (K)
+Tperp_i = 10*Ti;         % 离子垂直温度 (K)
 Tpara_i = 1*Ti;          % 离子平行温度 (K)
 
 % 频率
@@ -59,18 +59,19 @@ A_l_n = @(Tperp_l, Tpara_l, omega, kpar, V_l, n_l, omega_cl, w_par_l) ...
       n_l*omega_cl./(omega*kpar*w_par_l) ) .* Z0(xi_n(omega, kpar, V_l, n_l, omega_cl, w_par_l), kpar);
 
 % B_l^0(kpar)的实现
-B_l_0 = @(Tperp_l, Tpara_l, omega, kpar, V_l, w_par_l) ...
+B_l_0 = @(Tperp_l, Tpara_l, omega, omega_cl, kpar, V_l, w_par_l) ...
     (omega*Tperp_l - kpar*V_l*Tpara_l)/(omega*kpar*Tpara_l) + ...
-    (xi_n(omega, kpar, V_l, 0, 0, w_par_l)*Tperp_l)./(kpar*Tpara_l) .* ...
-    Z0(xi_n(omega, kpar, V_l, 0, 0, w_par_l), kpar);
+    (xi_n(omega, kpar, V_l, 0, omega_cl, w_par_l)*Tperp_l)./(kpar*Tpara_l) .* ...
+    Z0(xi_n(omega, kpar, V_l, 0, omega_cl, w_par_l), kpar);
 
 % 色散方程
-A1e = @(kpar) A_l_n(Tperp_e, Tpara_e, omega, kpar, V_e, n_e, omega_ce, w_para_e);
-A1i = @(kpar) A_l_n(Tperp_i, Tpara_i, omega, kpar, V_i, n_i, omega_ci, w_para_i);
+A1e = @(kpar) A_l_n(Tperp_e, Tpara_e, omega, kpar, V_e, 1, omega_ce, w_para_e);
+A1i = @(kpar) A_l_n(Tperp_i, Tpara_i, omega, kpar, V_i, 1, omega_ci, w_para_i);
 
 function F = my_disp_eq(kpar, omega, omega_pe, omega_pi, c, A1e, A1i)
-    F = (kpar.^2 * c^2 - omega^2 - omega_pe^2 * A1e(kpar) - omega_pi^2 * A1i(kpar)) / c^2;
+    F = (kpar.^2 * c^2 - omega^2 - omega_pe^2 * A1e(kpar) - omega_pi^2 * omega * A1i(kpar)) / c^2;
 end
+
 
 % 初始猜测
 k0 = 1000 * omega / c;
@@ -79,7 +80,18 @@ k0 = 1000 * omega / c;
 options = optimset('Display','iter','TolFun',1e-10,'TolX',1e-10);
 kpar_sol = fsolve(@(kpar) my_disp_eq(kpar, omega, omega_pe, omega_pi, c, A1e, A1i), k0, options);
 
-fprintf('求解得到 k_parallel = %.6e + %.6ei 1/m\n', real(kpar_sol), imag(kpar_sol));
+fprintf('求解条件：\n');
+fprintf('电子密度：%.2e m^-3\n', ne);
+fprintf('离子密度：%.2e m^-3\n', ni);
+fprintf('磁场：   %.2e T\n', B0);
+fprintf('驱动频率：%.2e rad/s\n', omega);
+fprintf('离子回旋频率：%.2e rad/s\n', omega_ci);
+fprintf('电子平行温度：%.2e eV\n', Tpara_e);
+fprintf('离子平行温度：%.2e eV\n', Tpara_i);
+fprintf('电子垂直温度：%.2e eV\n', Tperp_e);
+fprintf('离子垂直温度：%.2e eV\n', Tperp_i);
+
+fprintf('\n求解得到 k_parallel = %.6e + %.6ei 1/m\n', real(kpar_sol), imag(kpar_sol));
 
 % ========== 计算介电张量分量 ==========
 % 电子参数
@@ -98,7 +110,7 @@ for l = [params_e, params_i]
     A_p1 = A_l_n(l.Tperp, l.Tpara, omega, kpar_sol, l.V, +1, l.omega_c, l.w_par);
     A_m1 = A_l_n(l.Tperp, l.Tpara, omega, kpar_sol, l.V, -1, l.omega_c, l.w_par);
     % B_l^0
-    B_0 = B_l_0(l.Tperp, l.Tpara, omega, kpar_sol, l.V, l.w_par);
+    B_0 = B_l_0(l.Tperp, l.Tpara, omega, l.omega_c, kpar_sol, l.V, l.w_par);
     % K_perp
     K_perp = K_perp + (l.omega_p^2/(2*omega)) * (A_m1 + A_p1);
     % K_phi
@@ -107,7 +119,7 @@ for l = [params_e, params_i]
     K_par = K_par + (2*l.omega_p^2/(kpar_sol*l.w_perp^2)) * (l.V/omega + B_0);
 end
 
-fprintf('\n介电张量分量：\n');
+fprintf('\n热等离子体介电张量分量：\n');
 fprintf('K_perp = %.6e + %.6ei\n', real(K_perp), imag(K_perp));
 fprintf('K_phi  = %.6e + %.6ei\n', real(K_phi), imag(K_phi));
 fprintf('K_par  = %.6e + %.6ei\n', real(K_par), imag(K_par));
