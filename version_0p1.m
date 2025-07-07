@@ -44,8 +44,8 @@ n = 1e18;               % 电子密度 (m^-3)
 ne = n;
 ni = n;                 % 离子密度 (m^-3)，假设准中性
 f = 190e3;               % 驱动频率 (Hz) - 固定s为190kHz
-Te_eV = 0.0003;               % 电子温度 (eV)
-Ti_eV = 0.00003;             % 离子温度 (eV)
+Te_eV = 10;               % 电子温度 (eV)
+Ti_eV = 1;             % 离子温度 (eV)
 Te = Te_eV * e / kB;     % 电子温度 (K)
 Ti = Ti_eV * e / kB;     % 离子温度 (K)
 Tperp_e = 1*Te;        % 电子垂直温度 (K)
@@ -57,7 +57,7 @@ Tpara_i = 1*Ti;          % 离子平行温度 (K)
 omega = 2*pi*f;          % 角频率 (rad/s)
 
 % 扫描参数
-B_values = 0.3:0.001:0.6; % 磁场强度范围 (T)
+B_values = 0.47:0.0005:0.5; % 磁场强度范围 (T)
 num_B = length(B_values);
 
 % 存储结果
@@ -79,41 +79,48 @@ k_imag_cold_results = zeros(1, num_B);
 % 谐波数
 n_e = 1;                              % 电子谐波数
 n_i = 1;                              % 离子谐波数
-V_e = 10000;                              % 电子漂移速度
-V_i = 10000;                              % 离子漂移速度
+V_e = 0;                              % 电子漂移速度
+V_i = 0;                              % 离子漂移速度
 
-ele = struct('omega_p', omega_p_e, 'omega_c', omega_c_e, 'Tperp', Tperp_e, 'Tpara', Tpara_e, 'V', V_e, 'w_par', w_para_e, 'w_perp', w_perp_e, 'm', me);
-ion = struct('omega_p', omega_p_i, 'omega_c', omega_c_i, 'Tperp', Tperp_i, 'Tpara', Tpara_i, 'V', V_i, 'w_par', w_para_i, 'w_perp', w_perp_i, 'm', mi);
+ele = struct('omega_p', 'omega_c', 'T_perp', Tperp_e, 'T_para', Tpara_e, 'V', V_e, 'w_para', 'w_perp', 'm', me);
+ion = struct('omega_p', 'omega_c', 'T_perp', Tperp_i, 'T_para', Tpara_i, 'V', V_i, 'w_para', 'w_perp', 'm', mi);
 
-function result = hotPDE(kpar, omega, ele, ion)
-    result = kpar^2 * c^2 - omega^2 - ele.omega_p^2 * omega * funA(omega, kpar, 1, ele) - ion.omega_p^2 * omega * funA(omega, kpar, 1, ion);
+function result = hotPDE(kpar, omega, ele, ion, c, scipy_special)
+    result = (kpar^2 * c^2 - omega^2 - ele.omega_p^2 * omega * funA(omega, kpar, 1, ele, c, scipy_special) - ion.omega_p^2 * omega * funA(omega, kpar, 1, ion, c, scipy_special));
+    %a1 = kpar^2 * c^2
+    %a2 = omega^2
+    %a3 = ele.omega_p^2 * omega * funA(omega, kpar, 1, ele, c, scipy_special)
+    %a4 = ion.omega_p^2 * omega * funA(omega, kpar, 1, ion, c, scipy_special)
 end
 
 function result = coldPDE(kpar, omega, ele, ion)
+    c = 3e8;
     result = kpar.^2 * c^2 - (omega^2 - ...
         ele.omega_p^2 * (omega - kpar*ele.V) / (omega - kpar*ele.V - ele.omega_c) ...
         - ion.omega_p^2 * (omega - kpar*ion.V) / (omega - kpar*ion.V - ion.omega_c));
 end
 
-function result = Z0(xi, kpar)
-    z = real(xi) + abs(imag(xi))*1i;
-    result = 1i*sqrt(pi)*scipy_special.wofz(z);
+function result = Z0(xi, kpar, scipy_special)
+    %z = real(xi) + abs(imag(xi))*1i;
+    z1 = xi * (real(kpar)>0) - xi *(real(kpar)<0);
+    z2 = real(z1) + abs(imag(z1))*1i;
+    result = 1i*sqrt(pi)*scipy_special.wofz(z2);
 end
 
-function result = funA(omega, kpar, n, l)
-    result = (l.Tperp-l.Tpara)/(omega*l.Tpara) + ...
-        ( (funXi(omega, kpar, n, l)*l.Tperp)/(omega*l.Tpara) + ...
-          n*l.omega_c./(kpar*omega*l.w_par) ) .* Z0(funXi(omega, kpar, n, l), kpar);
+function result = funA(omega, kpar, n, l, c, scipy_special)
+    result = (l.T_perp-l.T_para)/(omega*l.T_para) + ...
+        ( (funXi(omega, kpar, n, l, c, scipy_special)*l.T_perp)/(omega*l.T_para) + ...
+          (n * l.omega_c)/(kpar*omega*l.w_para) ) .* Z0(funXi(omega, kpar, n, l, c, scipy_special), kpar, scipy_special);
 end
 
-function result = funB0(omega, kpar, l)
-    result = (omega*l.Tperp - kpar*l.V*l.Tpara)/(omega*kpar*l.Tpara) + ...
-        (funXi(omega, kpar, 0, l)*l.Tperp)./(kpar*l.Tpara) .* ...
-        Z0(funXi(omega, kpar, 0, l), kpar);
+function result = funB0(omega, kpar, l, c, scipy_special)
+    result = (omega*l.T_perp - kpar*l.V*l.T_para)/(omega*kpar*l.T_para) + ...
+        (funXi(omega, kpar, 0, l, c, scipy_special)*l.T_perp)./(kpar*l.T_para) .* ...
+        Z0(funXi(omega, kpar, 0, l, c, scipy_special), kpar, scipy_special);
 end
 
-function result = funXi(omega, kpar, n, l)
-    result = (omega - kpar*l.V - n*l.omega_c) ./ (kpar*l.w_par);
+function result = funXi(omega, kpar, n, l, c, scipy_special)
+    result = (omega - kpar*l.V - n*l.omega_c) ./ (kpar*l.w_para);
 end
 
 % 主扫描循环
@@ -122,13 +129,18 @@ for i = 1:num_B
     
     fprintf('处理 B = %.2f T (%d/%d)...\n', B0, i, num_B);
     
-    for l = [ele, ion]
-        l.omega_p = sqrt(n*e^2/(eps0*l.m));    % 等离子体频率
-        l.omega_c = e*B0/l.m;                  % 回旋频率
-        l.w_para = sqrt(2*kB*l.T/l.m);          % 平行热速
-        l.w_perp = sqrt(2*kB*l.Tperp/l.m);     % 垂直热速
-    end
-    
+    % 电子参数
+    ele.omega_p = sqrt(n*e^2/(eps0*ele.m))
+    ele.omega_c = e*B0/ele.m;
+    ele.w_para  = sqrt(2*kB*ele.T_para/ele.m);
+    ele.w_perp  = sqrt(2*kB*ele.T_perp/ele.m);
+
+    % 离子参数
+    ion.omega_p = sqrt(n*e^2/(eps0*ion.m))
+    ion.omega_c = e*B0/ion.m;
+    ion.w_para  = sqrt(2*kB*ion.T_para/ion.m);
+    ion.w_perp  = sqrt(2*kB*ion.T_perp/ion.m);
+
     % 存储频率
     omega_c_i_results(i) = ion.omega_c;
     omega_c_e_results(i) = ele.omega_c;
@@ -152,15 +164,24 @@ for i = 1:num_B
     
     % 尝试求解热等离子体色散方程
     try
-        step = 10;
-        k0_hot = k0_cold;
+        step = 1;
+        k0_hot = kpar_cold_sol;
+        %k0_hot = 1 + 0i;
         options = optimset('Display','iter','TolFun',1e-30,'TolX',1e-20);
+        %options = optimoptions('fsolve', 'Algorithm', 'levenberg-marquardt', 'FunctionTolerance',1e-12,'StepTolerance',1e-12,'Display','iter','SpecifyObjectiveGradient', true);
         for istep = 1:step
-            for l = [ele, ion]
-                l.T_perp = Tperp_e * (istep/step);
-                l.T_para = Tpara_e * (istep/step);
-            end
-            kpar_sol = fsolve(@(kpar) hotPDE(kpar, omega, ele, ion), k0_hot, options);
+            % 电子参数
+            ele.T_perp = Tperp_e * (istep/step);
+            ele.T_para = Tpara_e * (istep/step);
+            ele.w_para = sqrt(2*kB*ele.T_para/ele.m);
+            ele.w_perp = sqrt(2*kB*ele.T_perp/ele.m);
+            % 离子参数
+            ion.T_perp = Tperp_i * (istep/step);
+            ion.T_para = Tpara_i * (istep/step);
+            ion.w_para = sqrt(2*kB*ion.T_para/ion.m);
+            ion.w_perp = sqrt(2*kB*ion.T_perp/ion.m);
+            kpar_sol = fsolve(@(kpar) hotPDE(kpar, omega, ele, ion, c, scipy_special), k0_hot, options);
+            %k0_hot = kpar_cold_sol * (step - istep)/step + kpar_sol * istep/step;
             k0_hot = kpar_sol;
         end
         
@@ -175,11 +196,14 @@ for i = 1:num_B
         K_phi = 0;
         K_par = 1;
         
-        for l = [ele, ion]
-            K_perp = K_perp + (l.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, l) + funA(omega, kpar_sol, 1, l));
-            K_phi = K_phi + (l.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, l) - funA(omega, kpar_sol, 1, l));
-            K_par = K_par + (2*l.omega_p^2/(kpar_sol*l.w_perp^2)) * (l.V/omega + funB0(omega, kpar_sol, l));
-        end
+        % 电子分量
+        K_perp = K_perp + (ele.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, ele, c, scipy_special) + funA(omega, kpar_sol, 1, ele, c, scipy_special));
+        K_phi = K_phi + (ele.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, ele, c, scipy_special) - funA(omega, kpar_sol, 1, ele, c, scipy_special));
+        K_par = K_par + (2*ele.omega_p^2/(kpar_sol*ele.w_perp^2)) * (ele.V/omega + funB0(omega, kpar_sol, ele, c, scipy_special));
+        % 离子分量
+        K_perp = K_perp + (ion.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, ion, c, scipy_special) + funA(omega, kpar_sol, 1, ion, c, scipy_special));
+        K_phi = K_phi + (ion.omega_p^2/(2*omega)) * (funA(omega, kpar_sol, -1, ion, c, scipy_special) - funA(omega, kpar_sol, 1, ion, c, scipy_special));
+        K_par = K_par + (2*ion.omega_p^2/(kpar_sol*ion.w_perp^2)) * (ion.V/omega + funB0(omega, kpar_sol, ion, c, scipy_special));
         
         % 存储热等离子体结果
         K_perp_hot(i) = K_perp;
